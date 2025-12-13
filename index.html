@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sıcak Soğuk Oyunu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            transition: background-color 0.5s;
+        }
+        .blue {
+            background-color: #87CEEB; /* Mavi */
+        }
+        .red {
+            background-color: #FF6347; /* Kırmızı */
+        }
+        canvas {
+            border: 2px solid #000;
+            cursor: crosshair;
+        }
+        #message {
+            margin-top: 20px;
+            font-size: 1.2em;
+            text-align: center;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="blue">
+    <h1>Sıcak Soğuk Oyunu</h1>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <div id="message">Hedef noktayı seçmek için tıklayın.</div>
+    <button id="resetBtn" style="display: none;" onclick="resetGame()">Yeniden Oyna</button>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const message = document.getElementById('message');
+        const resetBtn = document.getElementById('resetBtn');
+
+        const cellSize = 17;
+        const cols = Math.floor(canvas.width / cellSize); // 35
+        const rows = Math.floor(canvas.height / cellSize); // 23
+
+        let stage = 1; // 1: hedef seç, 2: tahmin et
+        let targetCellX, targetCellY;
+        let attempts = 3;
+        let guesses = [];
+
+        function drawGrid() {
+            ctx.strokeStyle = '#ddd';
+            for (let i = 0; i <= cols; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cellSize, 0);
+                ctx.lineTo(i * cellSize, canvas.height);
+                ctx.stroke();
+            }
+            for (let j = 0; j <= rows; j++) {
+                ctx.beginPath();
+                ctx.moveTo(0, j * cellSize);
+                ctx.lineTo(canvas.width, j * cellSize);
+                ctx.stroke();
+            }
+        }
+
+        function drawGuesses() {
+            guesses.forEach((guess, index) => {
+                ctx.fillStyle = index === guesses.length - 1 ? 'blue' : 'gray'; // son tahmin mavi, önceki gri
+                ctx.fillRect(guess.x * cellSize, guess.y * cellSize, cellSize, cellSize);
+            });
+        }
+
+        // Başlangıçta grid çiz
+        drawGrid();
+
+        canvas.addEventListener('click', function(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            const clickCellX = Math.floor(x / cellSize);
+            const clickCellY = Math.floor(y / cellSize);
+
+            if (stage === 1) {
+                // Hedef seç
+                targetCellX = clickCellX;
+                targetCellY = clickCellY;
+                // Hedef hücreyi çiz (göster)
+                ctx.fillStyle = 'red';
+                ctx.fillRect(targetCellX * cellSize, targetCellY * cellSize, cellSize, cellSize);
+                // Kısa süre sonra gizle ve ikinci aşamaya geç
+                setTimeout(() => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    drawGrid();
+                    document.body.classList.remove('blue');
+                    document.body.classList.add('red');
+                    message.textContent = 'Hedef hücreyi veya komşu hücreleri tahmin etmek için tıklayın. 3 hakkınız var.';
+                    stage = 2;
+                }, 1000);
+            } else if (stage === 2) {
+                // Tahmin et
+                const clickCellX = Math.floor(x / cellSize);
+                const clickCellY = Math.floor(y / cellSize);
+                guesses.push({x: clickCellX, y: clickCellY});
+                drawGuesses();
+
+                const isSuccess = Math.abs(clickCellX - targetCellX) <= 1 && Math.abs(clickCellY - targetCellY) <= 1;
+                if (isSuccess) {
+                    message.textContent = 'Başarılı!';
+                    // Hedef hücreyi yeşil ile göster
+                    ctx.fillStyle = 'green';
+                    ctx.fillRect(targetCellX * cellSize, targetCellY * cellSize, cellSize, cellSize);
+                    resetBtn.style.display = 'block';
+                } else {
+                    attempts--;
+                    const distance = Math.abs(clickCellX - targetCellX) + Math.abs(clickCellY - targetCellY);
+                    if (attempts > 0) {
+                        message.textContent = `Yanlış! Hedefe ${distance} kutu uzaklıktasınız. Kalan hak: ${attempts}`;
+                    } else {
+                        message.textContent = 'Hakkınız bitti! Hedef gösteriliyor.';
+                        // Hedef hücreyi yeşil ile göster
+                        ctx.fillStyle = 'green';
+                        ctx.fillRect(targetCellX * cellSize, targetCellY * cellSize, cellSize, cellSize);
+                        resetBtn.style.display = 'block';
+                    }
+                }
+            }
+        });
+
+        function resetGame() {
+            stage = 1;
+            attempts = 3;
+            guesses = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            document.body.classList.remove('red');
+            document.body.classList.add('blue');
+            message.textContent = 'Hedef hücreyi seçmek için tıklayın.';
+            resetBtn.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
